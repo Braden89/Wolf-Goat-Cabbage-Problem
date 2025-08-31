@@ -1,3 +1,4 @@
+from collections import deque
 W, G, C = "W", "G", "C"
 ITEMS = {W, G, C}
 
@@ -53,8 +54,68 @@ def next_states(state) -> bool:
 
     return moves
 
+def next_states(state):
+    left, boat = state
+    right = ITEMS - set(left)
+    farmer_left = (boat == 'L')
+    current_bank = set(left) if farmer_left else set(right)
+    candidates = [None] + sorted(list(current_bank))
+    for cargo in candidates:
+        new_left = set(left)
+        if farmer_left:  # L -> R
+            if cargo is not None:
+                new_left.remove(cargo)
+            new_boat = 'R'
+            desc = f"Farmer takes {cargo or 'nothing'} L→R"
+        else:  # R -> L
+            if cargo is not None:
+                new_left.add(cargo)
+            new_boat = 'L'
+            desc = f"Farmer takes {cargo or 'nothing'} R→L"
+
+        ns = (frozenset(new_left), new_boat)
+        if state_valid(ns):
+            yield ns, desc
+
+def bfs_solve():
+    start = (frozenset(ITEMS), 'L')
+    goal_left = frozenset()
+
+    q = deque([start])
+    parent = {start: None}
+    move   = {start: None}
+
+    while q:
+        s = q.popleft()
+        left, _ = s
+        if left == goal_left:
+            # reconstruct path
+            path = []
+            cur = s
+            while cur is not None:
+                path.append((cur, move[cur]))
+                cur = parent[cur]
+            path.reverse()
+            return path
+
+        for ns, desc in next_states(s):
+            if ns not in parent:
+                parent[ns] = s
+                move[ns]   = desc
+                q.append(ns)
+
+    return None
+
 if __name__ == "__main__":
-    start = (frozenset({W, G, C}), 'L')
-    print("From the start, legal moves are:")
-    for ns, d in next_states(start):
-        print(" -", d, "→", ns)
+    sol = bfs_solve()
+    if not sol:
+        print("No solution found.")
+    else:
+        print("Solution:")
+        for (state, m) in sol:
+            left, boat = state
+            right = ITEMS - set(left)
+            if m is None:
+                print(f"Start | Left: {sorted(left)} | Right: {sorted(right)} | Boat: {boat}")
+            else:
+                print(f"{m:>24} | Left: {sorted(left)} | Right: {sorted(right)} | Boat: {boat}")
