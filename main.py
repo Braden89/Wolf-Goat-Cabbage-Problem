@@ -1,7 +1,7 @@
 W, G, C = "W", "G", "C"
 ITEMS = {W, G, C}
 
-def back_unsafe(bank: set, farmer_here:bool) -> bool:
+def bank_unsafe(bank: set, farmer_here:bool) -> bool:
     """
     A bank is unsafe if the farmer is NOT there and (W+G) or (G+C) are together
     return true if their is danger and false if their is none.
@@ -21,13 +21,40 @@ def state_valid(state) -> bool:
     return (not bank_unsafe(set(left), farmer_left)
             and not bank_unsafe(right, not farmer_left))
 
+def next_states(state) -> bool:
+    """
+    Return list of (new_state, move_description).
+    state = (frozenset(left_bank_items), 'L' or 'R')
+    """
+    left, boat = state
+    right = ITEMS - set(left)
+    farmer_left = (boat == 'L')
+    current_bank = set(left) if farmer_left else set(right)
+
+    candidates = [None] + sorted(list(current_bank)) # take northing or one item
+    moves = []
+
+    for cargo in candidates:
+        new_left = set(left)
+        if farmer_left: #L -> R
+            if cargo is not None:
+                new_left.remove(cargo)
+            new_boat = 'R'
+            desc = f"Farmer takes {cargo or 'nothing'} L->R"
+        else: # L -> R
+            if cargo is not None:
+                new_left.add(cargo)
+            new_boat = 'L'
+            desc = f"Farmers takes {cargo or 'nothing'} R->L"
+
+        ns = (frozenset(new_left), new_boat)
+        if state_valid(ns):
+            moves.append((ns, desc))
+
+    return moves
+
 if __name__ == "__main__":
-    # Some quick checks:
-    start = (frozenset({W, G, C}), 'L')  # all on left, farmer left
-    print("Start valid?", state_valid(start))  # should be True
-
-    bad = (frozenset({W, G}), 'R')  # W+G alone on left (farmer right) -> invalid
-    print("W+G alone on left valid?", state_valid(bad))  # should be False
-
-    ok = (frozenset({G}), 'R')  # W+C together on right with farmer -> ok
-    print("G left, farmer right valid?", state_valid(ok))  # should be True
+    start = (frozenset({W, G, C}), 'L')
+    print("From the start, legal moves are:")
+    for ns, d in next_states(start):
+        print(" -", d, "→", ns)
